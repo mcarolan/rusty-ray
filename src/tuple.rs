@@ -1,11 +1,11 @@
 use approx::AbsDiffEq;
 
-#[derive(Debug, PartialEq)]
-struct Tuple {
-    x: f64,
-    y: f64,
-    z: f64,
-    w: f64,
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct Tuple {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub w: f64,
 }
 
 impl AbsDiffEq for Tuple
@@ -25,7 +25,7 @@ impl AbsDiffEq for Tuple
 }
 
 impl Tuple {
-    fn new(x: f64, y: f64, z: f64, w: f64) -> Tuple {
+    pub fn new(x: f64, y: f64, z: f64, w: f64) -> Tuple {
         Tuple {
             x: x,
             y: y,
@@ -34,7 +34,7 @@ impl Tuple {
         }
     }
 
-    fn point(x: f64, y: f64, z: f64) -> Tuple {
+    pub fn point(x: f64, y: f64, z: f64) -> Tuple {
         Tuple {
             x: x,
             y: y,
@@ -43,7 +43,7 @@ impl Tuple {
         }
     }
 
-    fn vector(x: f64, y: f64, z: f64) -> Tuple  {
+    pub fn vector(x: f64, y: f64, z: f64) -> Tuple  {
         Tuple {
             x: x,
             y: y,
@@ -52,15 +52,15 @@ impl Tuple {
         }
     }
 
-    fn is_point(&self) -> bool {
+    pub fn is_point(&self) -> bool {
         self.w == 1.0
     }
 
-    fn is_vector(&self) -> bool {
+    pub fn is_vector(&self) -> bool {
         !self.is_point()
     }
 
-    fn add(&self, other: &Tuple) -> Tuple {
+    pub fn add(&self, other: &Tuple) -> Tuple {
         Tuple {
             x: self.x + other.x,
             y: self.y + other.y,
@@ -69,7 +69,7 @@ impl Tuple {
         }
     }
 
-    fn subtract(&self, other: &Tuple) -> Tuple {
+    pub fn subtract(&self, other: &Tuple) -> Tuple {
         Tuple {
             x: self.x - other.x,
             y: self.y - other.y,
@@ -78,7 +78,7 @@ impl Tuple {
         }
     }
 
-    fn negate(&self) -> Tuple {
+    pub fn negate(&self) -> Tuple {
         Tuple {
             x: -self.x,
             y: -self.y,
@@ -87,7 +87,7 @@ impl Tuple {
         }
     }
 
-    fn scalar_mul(&self, n: f64) -> Tuple {
+    pub fn scalar_mul(&self, n: f64) -> Tuple {
         Tuple {
             x: self.x * n,
             y: self.y * n,
@@ -96,7 +96,7 @@ impl Tuple {
         }
     }
 
-    fn scalar_div(&self, n: f64) -> Tuple {
+    pub fn scalar_div(&self, n: f64) -> Tuple {
         Tuple {
             x: self.x / n,
             y: self.y / n,
@@ -105,23 +105,23 @@ impl Tuple {
         }
     }
 
-    fn magnitude(&self) -> f64 {
+    pub fn magnitude(&self) -> f64 {
         f64::sqrt((self.x * self.x)  + (self.y * self.y) + (self.z * self.z) + (self.w  * self.w))
     }
 
-    fn normalize(&self) -> Tuple {
+    pub fn normalize(&self) -> Tuple {
         let mag  = self.magnitude();
         self.scalar_div(mag)
     }
 
-    fn dot(&self, other: &Tuple) -> f64 {
+    pub fn dot(&self, other: &Tuple) -> f64 {
         (self.x * other.x) +
         (self.y * other.y) +
         (self.z * other.z) +
         (self.w * other.w)
     }
 
-    fn cross(&self, other: &Tuple) -> Tuple {
+    pub fn cross(&self, other: &Tuple) -> Tuple {
         Tuple::vector(
             self.y * other.z - self.z  * other.y,
             self.z * other.x - self.x * other.z,
