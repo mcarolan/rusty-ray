@@ -207,14 +207,14 @@ mod tests {
     }
 
     #[test]
-    fn test_scalarMul() {
+    fn test_scalar_mul() {
         let a = Tuple::new(1.0, -2.0, 3.0, -4.0);
         assert_abs_diff_eq!(a.scalar_mul(3.5), Tuple::new(3.5, -7.0, 10.5, -14.0));
         assert_abs_diff_eq!(a.scalar_mul(0.5), Tuple::new(0.5, -1.0, 1.5, -2.0));
     }
 
     #[test]
-    fn test_scalarDiv() {
+    fn test_scalar_div() {
         let a = Tuple::new(1.0, -2.0, 3.0, -4.0);
         assert_abs_diff_eq!(a.scalar_div(2.0), Tuple::new(0.5, -1.0, 1.5, -2.0));
     }

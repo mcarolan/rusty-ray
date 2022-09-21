@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use approx::AbsDiffEq;
 
 pub struct Canvas {
@@ -282,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_canvas_generate_ppm_ends_with_newline() {
-        let mut c = Canvas::new(10, 2);
+        let c = Canvas::new(10, 2);
         let ppm = c.generate_ppm();
         assert!(ppm.ends_with("\n"));
     }

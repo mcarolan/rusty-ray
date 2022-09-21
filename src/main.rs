@@ -2,10 +2,13 @@ use std::fs;
 
 use color::{Canvas, Color};
 
-use crate::tuple::Tuple;
-
 mod tuple;
 mod color;
+mod matrix4;
+mod matrix2;
+mod matrix3;
+
+#[cfg(test)]
 #[macro_use]
 extern crate approx;
 
@@ -50,5 +53,5 @@ fn main() {
         p = tick(&e, p);
     }
     let ppm = canvas.generate_ppm();
-    fs::write("./examples/chapter-2.ppm", ppm).expect("Unable to output file");
+    fs::write("./examples/chapter-3.ppm", ppm).expect("Unable to output file");
 }
