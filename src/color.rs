@@ -74,11 +74,11 @@ impl Canvas {
     }
 
     pub fn write_pixel(&mut self, x: i64, y: i64, color: &Color) -> Option<()> {
-        let index: usize = (x + (y * self.width)).try_into().unwrap();
-        let pixel = self.pixels.get_mut(index);
-        pixel.map(|c| {
-            *c = *color;
-        })
+        (x + (y * self.width))
+            .try_into()
+            .ok()
+            .and_then(|index: usize| { self.pixels.get_mut(index) })
+            .map(|c| { *c = *color; })
     }
 
     pub fn generate_ppm(&self) -> String {
