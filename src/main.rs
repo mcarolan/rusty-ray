@@ -1,7 +1,10 @@
 use std::{fs, f64::consts::PI};
 
 use color::{Canvas, Color};
+use matrix4::Matrix4;
+use ray::{Sphere, Ray};
 use tuple::Tuple;
+use ray::Intersect;
 
 mod tuple;
 mod color;
@@ -9,32 +12,40 @@ mod matrix4;
 mod matrix2;
 mod matrix3;
 mod transform;
+mod ray;
 
 #[cfg(test)]
 #[macro_use]
 extern crate approx;
 
 fn main() {
-    let mut canvas = Canvas::new(120, 120);
+    let mut canvas = Canvas::new(100, 100);
     let red = Color::new(1.0, 0.0, 0.0);
     
-    let mut points = Vec::new();
+    let ray_origin = Tuple::point(0.0, 0.0, -5.0);
+    let wall_z = 10.0;
+    let wall_size = 7.0;
 
-    let twelve = Tuple::point(0.0, 0.0, 1.0);
+    let pixel_size = wall_size / (canvas.width as f64);
+    let half = wall_size / 2.0;
 
-    for i in 0..12 {
-        let rads = (i as f64) * (PI / 6.0);
-        points.push(transform::rotation_y(rads).mul_tuple(&twelve));
-    }
+    let s = Sphere::new(1, Matrix4::IDENTITY);
+    
+    for y in 0..canvas.height - 1 {
+        let world_y = half - pixel_size * (y as f64);
+        for x in 0..canvas.width - 1  {
+            let world_x = -half + pixel_size * (x as f64);
+            let position = Tuple::point(world_x, world_y, wall_z);
 
-    let scaled_translated: Vec<Tuple> = points.iter().map(|p| {
-        transform::translation(60.0, 0.0, 60.0).mul_matrix(&transform::scaling(50.0, 0.0, 50.0)).mul_tuple(&p)
-    }).collect();
+            let ray = Ray::new(ray_origin, position.subtract(&ray_origin).normalize());
+            let xs = s.intersect(&ray);
 
-    for p in scaled_translated.iter() {
-        canvas.write_pixel(p.x as i64, p.z as i64, &red);
+            if xs.hit().is_some() {
+                canvas.write_pixel(x, y, &red);
+            }
+        }
     }
     
     let ppm = canvas.generate_ppm();
-    fs::write("./examples/chapter-4.ppm", ppm).expect("Unable to output file");
+    fs::write("./examples/chapter-5.ppm", ppm).expect("Unable to output file");
 }
