@@ -34,7 +34,7 @@ impl Tuple {
         }
     }
 
-    pub fn point(x: f64, y: f64, z: f64) -> Tuple {
+    pub const fn point(x: f64, y: f64, z: f64) -> Tuple {
         Tuple {
             x: x,
             y: y,
@@ -43,7 +43,7 @@ impl Tuple {
         }
     }
 
-    pub fn vector(x: f64, y: f64, z: f64) -> Tuple  {
+    pub const fn vector(x: f64, y: f64, z: f64) -> Tuple  {
         Tuple {
             x: x,
             y: y,
@@ -127,6 +127,10 @@ impl Tuple {
             self.z * other.x - self.x * other.z,
             self.x * other.y - self.y * other.x
         )
+    }
+
+    pub fn reflect(&self, normal: &Tuple) -> Tuple {
+        self.subtract(&normal.scalar_mul(2.0).scalar_mul(self.dot(&normal)))
     }
 }
 
@@ -248,5 +252,15 @@ mod tests {
         let b = Tuple::vector(2.0, 3.0, 4.0);
         assert_abs_diff_eq!(a.cross(&b), Tuple::vector(-1.0, 2.0, -1.0));
         assert_abs_diff_eq!(b.cross(&a), Tuple::vector(1.0, -2.0, 1.0));
+    }
+
+    #[test]
+    fn test_reflect_45_deg() {
+        assert_abs_diff_eq!(Tuple::vector(1.0, -1.0, 0.0).reflect(&Tuple::vector(0.0, 1.0, 0.0)), Tuple::vector(1.0, 1.0, 0.0));
+    }
+
+    #[test]
+    fn test_reflect_45_slanted() {
+        assert_abs_diff_eq!(Tuple::vector(0.0, -1.0, 0.0).reflect(&Tuple::vector(f64::sqrt(2.0)/2.0, f64::sqrt(2.0)/2.0, 0.0)), Tuple::vector(1.0, 0.0,  0.0));
     }
 }
