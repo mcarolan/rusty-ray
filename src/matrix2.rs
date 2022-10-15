@@ -7,6 +7,7 @@ pub struct Matrix2 {
 }
 
 impl Matrix2 {
+    #[allow(dead_code)]
     pub fn builder(v1: f64, v2: f64) -> Matrix2Builder {
         let mut values = [-1.0; 4];
 
@@ -26,6 +27,7 @@ impl Matrix2 {
         (self.values[0] * self.values[3]) - (self.values[1] * self.values[2])
     }
 
+    #[allow(dead_code)]
     pub fn at(&self, r: usize, c: usize) -> f64 {
         self.values[(r * 2) + c]
     }
@@ -63,10 +65,12 @@ impl Debug for Matrix2 {
 }
 
 pub struct Matrix2Builder {
+    #[allow(dead_code)]
     current: Box<Matrix2>,
 }
 
 impl Matrix2Builder {
+    #[allow(dead_code)]
     pub fn row(self, v1: f64, v2: f64) -> Matrix2 {
         let Matrix2 { values: mut v } = *self.current;
 

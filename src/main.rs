@@ -1,70 +1,105 @@
-use std::{fs, f64::consts::PI};
+use std::{f64::consts::PI, fs};
 
-use color::{Canvas, Color};
-use lighting::{Material, PointLight, lighting};
-use matrix4::Matrix4;
-use ray::{Sphere, Ray};
+use color::Color;
+use lighting::{Material, PointLight};
+use ray::Sphere;
+use transform::*;
 use tuple::Tuple;
-use ray::Intersect;
+use world::{Camera, World, WorldObject};
 
-mod tuple;
 mod color;
-mod matrix4;
+mod lighting;
 mod matrix2;
 mod matrix3;
-mod transform;
+mod matrix4;
 mod ray;
-mod lighting;
+mod transform;
+mod tuple;
+mod world;
 
 #[cfg(test)]
 #[macro_use]
 extern crate approx;
 
 fn main() {
-    let mut canvas = Canvas::new(1000, 1000);
-    
-    let ray_origin = Tuple::point(0.0, 0.0, -5.0);
-    let wall_z = 10.0;
-    let wall_size = 7.0;
+    let room_material = Material::DEFAULT
+        .color(&Color::new(1.0, 0.9, 0.9))
+        .specular(0.0);
 
-    let pixel_size = wall_size / (canvas.width as f64);
-    let half = wall_size / 2.0;
+    let floor = Sphere::DEFAULT
+        .transform(&scaling(10.0, 0.01, 10.0))
+        .material(&room_material);
 
-    let material = Material {
-        color: Color::new(1.0, 0.2, 1.0),
-        ambient: Material::DEFAULT.ambient,
-        diffuse: Material::DEFAULT.diffuse,
-        specular: Material::DEFAULT.specular,
-        shininess: Material::DEFAULT.shininess,
+    let left_wall = Sphere::DEFAULT
+        .transform(
+            &translation(0.0, 0.0, 5.0)
+                .mul_matrix(&rotation_y(-PI / 4.0))
+                .mul_matrix(&rotation_x(PI / 2.0))
+                .mul_matrix(&scaling(10.0, 0.01, 10.0)),
+        )
+        .material(&room_material);
+
+    let right_wall = Sphere::DEFAULT
+        .transform(
+            &translation(0.0, 0.0, 5.0)
+                .mul_matrix(&rotation_y(PI / 4.0))
+                .mul_matrix(&rotation_x(PI / 2.0))
+                .mul_matrix(&scaling(10.0, 0.01, 10.0)),
+        )
+        .material(&room_material);
+
+    let sphere_large = Sphere::DEFAULT
+        .transform(&translation(-0.5, 1.0, 0.5))
+        .material(
+            &Material::DEFAULT
+                .color(&Color::new(0.1, 1.0, 0.5))
+                .diffuse(0.7)
+                .specular(0.3),
+        );
+
+    let sphere_smaller = Sphere::DEFAULT
+        .transform(&translation(1.5, 0.5, -0.5).mul_matrix(&scaling(0.5, 0.5, 0.5)))
+        .material(
+            &Material::DEFAULT
+                .color(&Color::new(0.5, 1.0, 0.1))
+                .diffuse(0.7)
+                .specular(0.3),
+        );
+
+    let sphere_smallest = Sphere::DEFAULT
+        .transform(&translation(-1.5, 0.33, -0.75).mul_matrix(&scaling(0.33, 0.33, 0.33)))
+        .material(
+            &Material::DEFAULT
+                .color(&Color::new(1.0, 0.8, 0.1))
+                .diffuse(0.7)
+                .specular(0.3),
+        );
+
+    let light = PointLight {
+        position: Tuple::point(-10.0, 10.0, -10.0),
+        intensity: Color::WHITE,
     };
-    let light = PointLight { 
-        position: Tuple::point(-10.0, 10.0, -10.0), 
-        intensity: Color::new(1.0, 1.0, 1.0) 
-    };
-    let s = Sphere::new(1).material(&material);
-    
-    for y in 0..canvas.height - 1 {
-        let world_y = half - pixel_size * (y as f64);
-        for x in 0..canvas.width - 1  {
-            let world_x = -half + pixel_size * (x as f64);
-            let position = Tuple::point(world_x, world_y, wall_z);
 
-            let ray = Ray::new(ray_origin, position.subtract(&ray_origin).normalize());
-            let xs = s.intersect(&ray);
+    let transform = view_transform(
+        &Tuple::point(0.0, 1.5, -5.0),
+        &Tuple::point(0.0, 1.0, 0.0),
+        &Tuple::vector(0.0, 1.0, 0.0),
+    );
 
-            match xs.hit() {
-                Some(hit) => {
-                    let point = ray.position(hit.t);
-                    let normal = s.normal_at(&point);
-                    let eye = ray.direction.negate();
-                    let color = lighting(&s.material, &light, &position, &eye, &normal);
-                    canvas.write_pixel(x, y, &color);
-                },
-                None => ()
-            }
-        }
-    }
-    
+    let camera = Camera::new(1024, 768, PI / 3.0, transform);
+
+    let world_objects: Vec<&dyn WorldObject> = vec![
+        &floor,
+        &left_wall,
+        &right_wall,
+        &sphere_large,
+        &sphere_smaller,
+        &sphere_smallest,
+    ];
+    let world = World::new(light, world_objects);
+
+    let canvas = camera.render(&world);
+
     let ppm = canvas.generate_ppm();
-    fs::write("./examples/chapter-6.ppm", ppm).expect("Unable to output file");
+    fs::write("./examples/chapter-7.ppm", ppm).expect("Unable to output file");
 }

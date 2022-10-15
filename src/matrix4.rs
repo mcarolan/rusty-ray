@@ -91,6 +91,7 @@ impl Matrix4 {
         (r * 4) + c
     }
 
+    #[allow(dead_code)]
     pub fn at(&self, r: usize, c: usize) -> f64 {
         self.values[Matrix4::row_col_index(r, c)]
     }
@@ -174,6 +175,7 @@ impl Matrix4 {
         det
     }
 
+    #[allow(dead_code)]
     pub fn is_invertible(&self) -> bool {
         self.determinant() != 0.0
     }

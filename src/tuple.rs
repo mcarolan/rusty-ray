@@ -52,10 +52,12 @@ impl Tuple {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_point(&self) -> bool {
         self.w == 1.0
     }
 
+    #[allow(dead_code)]
     pub fn is_vector(&self) -> bool {
         !self.is_point()
     }

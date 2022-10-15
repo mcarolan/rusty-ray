@@ -2,8 +2,8 @@ use approx::AbsDiffEq;
 
 pub struct Canvas {
     pixels: Vec<Color>,
-    pub width: i64,
-    pub height: i64,
+    pub width: i32,
+    pub height: i32,
 }
 
 struct PPMBuilder {
@@ -12,7 +12,7 @@ struct PPMBuilder {
 }
 
 impl PPMBuilder {
-    fn new(width: i64, height: i64) -> PPMBuilder {
+    fn new(width: i32, height: i32) -> PPMBuilder {
         PPMBuilder { result: format!("P3\n{} {}\n255\n", width, height), current_line: String::new() }
     }
 
@@ -53,7 +53,7 @@ impl PPMBuilder {
 }
 
 impl Canvas {
-    pub fn new(width: i64, height: i64) -> Canvas {
+    pub fn new(width: i32, height: i32) -> Canvas {
         let mut pixels = Vec::with_capacity((width * height).try_into().unwrap());
 
         for _i in 0..width {
@@ -68,12 +68,12 @@ impl Canvas {
         }
     }
 
-    pub fn pixel_at(&self, x: i64, y: i64) -> Option<&Color> {
+    pub fn pixel_at(&self, x: i32, y: i32) -> Option<&Color> {
         let index: usize = (x + (y * self.width)).try_into().unwrap();
         self.pixels.get(index)
     }
 
-    pub fn write_pixel(&mut self, x: i64, y: i64, color: &Color) -> Option<()> {
+    pub fn write_pixel(&mut self, x: i32, y: i32, color: &Color) -> Option<()> {
         (x + (y * self.width))
             .try_into()
             .ok()
@@ -125,7 +125,13 @@ impl Color {
         blue: 0.0,
     };
 
-    pub fn new(red: f64, green: f64, blue: f64) -> Color {
+    pub const WHITE: Color = Color {
+        red: 1.0,
+        green: 1.0,
+        blue: 1.0
+    };
+
+    pub const fn new(red: f64, green: f64, blue: f64) -> Color {
         Color {
             red: red,
             green: green,
@@ -141,6 +147,7 @@ impl Color {
         }
     }
 
+    #[allow(dead_code)]
     pub fn subtract(&self, other: &Color) -> Color {
         Color {
             red: self.red - other.red,

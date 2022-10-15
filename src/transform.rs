@@ -1,4 +1,4 @@
-use crate::matrix4::Matrix4;
+use crate::{matrix4::Matrix4, tuple::Tuple};
 
 pub fn translation(x: f64, y: f64, z: f64) -> Matrix4 {
     Matrix4::builder(1.0, 0.0, 0.0, x)
@@ -7,11 +7,12 @@ pub fn translation(x: f64, y: f64, z: f64) -> Matrix4 {
         .row(0.0, 0.0, 0.0, 1.0)
 }
 
-pub fn scaling(x: f64, y: f64, z: f64) -> Matrix4 {
-    Matrix4::builder(x, 0.0, 0.0, 0.0)
-        .row(0.0, y, 0.0, 0.0)
-        .row(0.0, 0.0, z, 0.0)
-        .row(0.0, 0.0, 0.0, 1.0)
+pub const fn scaling(x: f64, y: f64, z: f64) -> Matrix4 {
+    Matrix4 {
+        values: [
+            x, 0.0, 0.0, 0.0, 0.0, y, 0.0, 0.0, 0.0, 0.0, z, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ],
+    }
 }
 
 pub fn rotation_x(rads: f64) -> Matrix4 {
@@ -28,6 +29,7 @@ pub fn rotation_y(rads: f64) -> Matrix4 {
         .row(0.0, 0.0, 0.0, 1.0)
 }
 
+#[allow(dead_code)]
 pub fn rotation_z(rads: f64) -> Matrix4 {
     Matrix4::builder(f64::cos(rads), -f64::sin(rads), 0.0, 0.0)
         .row(f64::sin(rads), f64::cos(rads), 0.0, 0.0)
@@ -35,11 +37,23 @@ pub fn rotation_z(rads: f64) -> Matrix4 {
         .row(0.0, 0.0, 0.0, 1.0)
 }
 
+#[allow(dead_code)]
 pub fn shearing(xy: f64, xz: f64, yx: f64, yz: f64, zx: f64, zy: f64) -> Matrix4 {
     Matrix4::builder(1.0, xy, xz, 0.0)
         .row(yx, 1.0, yz, 0.0)
         .row(zx, zy, 1.0, 0.0)
         .row(0.0, 0.0, 0.0, 1.0)
+}
+
+pub fn view_transform(from: &Tuple, to: &Tuple, up: &Tuple) -> Matrix4 {
+    let forward = to.subtract(&from).normalize();
+    let left = forward.cross(&up.normalize());
+    let true_up = left.cross(&forward);
+    let orientation = Matrix4::builder(left.x, left.y, left.z, 0.0)
+        .row(true_up.x, true_up.y, true_up.z, 0.0)
+        .row(-forward.x, -forward.y, -forward.z, 0.0)
+        .row(0.0, 0.0, 0.0, 1.0);
+    orientation.mul_matrix(&translation(-from.x, -from.y, -from.z))
 }
 
 #[cfg(test)]
@@ -177,5 +191,42 @@ mod tests {
 
         let t = c.mul_matrix(&b).mul_matrix(&a);
         assert_abs_diff_eq!(t.mul_tuple(&p), Tuple::point(15.0, 0.0, 7.0));
+    }
+
+    #[test]
+    fn view_transform_default() {
+        let from = Tuple::point(0.0, 0.0, 0.0);
+        let to = Tuple::point(0.0, 0.0, -1.0);
+        let up = Tuple::vector(0.0, 1.0, 0.0);
+        assert_abs_diff_eq!(view_transform(&from, &to, &up), Matrix4::IDENTITY);
+    }
+
+    #[test]
+    fn view_transform_pos_z() {
+        let from = Tuple::point(0.0, 0.0, 0.0);
+        let to = Tuple::point(0.0, 0.0, 1.0);
+        let up = Tuple::vector(0.0, 1.0, 0.0);
+        assert_abs_diff_eq!(view_transform(&from, &to, &up), scaling(-1.0, 1.0, -1.0));
+    }
+
+    #[test]
+    fn view_transform_moves_world() {
+        let from = Tuple::point(0.0, 0.0, 8.0);
+        let to = Tuple::point(0.0, 0.0, 0.0);
+        let up = Tuple::vector(0.0, 1.0, 0.0);
+        assert_abs_diff_eq!(view_transform(&from, &to, &up), translation(0.0, 0.0, -8.0));
+    }
+
+    #[test]
+    fn view_transform_arb() {
+        let from = Tuple::point(1.0, 3.0, 2.0);
+        let to = Tuple::point(4.0, -2.0, 8.0);
+        let up = Tuple::vector(1.0, 1.0, 0.0);
+
+        let expected = Matrix4::builder(-0.50709, 0.50709, 0.67612, -2.36643)
+            .row(0.76772, 0.60609, 0.12122, -2.82843)
+            .row(-0.35857, 0.59761, -0.71714, 0.00000)
+            .row(0.00000, 0.00000, 0.00000, 1.00000);
+        assert_abs_diff_eq!(view_transform(&from, &to, &up), expected);
     }
 }

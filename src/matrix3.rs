@@ -10,6 +10,7 @@ pub struct Matrix3 {
 }
 
 impl Matrix3 {
+    #[allow(dead_code)]
     pub fn builder(v1: f64, v2: f64, v3: f64) -> Matrix3Builder {
         let mut values = [-1.0; 9];
 
@@ -68,6 +69,7 @@ impl Matrix3 {
         det
     }
 
+    #[allow(dead_code)]
     pub fn at(&self, r: usize, c: usize) -> f64 {
         self.values[Matrix3::row_col_index(r, c)]
     }
@@ -107,11 +109,14 @@ impl Debug for Matrix3 {
 }
 
 pub struct Matrix3Builder {
+    #[allow(dead_code)]
     current: Box<Matrix3>,
+    #[allow(dead_code)]
     offset: usize,
 }
 
 impl Matrix3Builder {
+    #[allow(dead_code)]
     pub fn row(self, v1: f64, v2: f64, v3: f64) -> Matrix3Builder2 {
         let Matrix3 { values: mut v } = *self.current;
 
@@ -127,11 +132,14 @@ impl Matrix3Builder {
 }
 
 pub struct Matrix3Builder2 {
+    #[allow(dead_code)]
     current: Box<Matrix3>,
+    #[allow(dead_code)]
     offset: usize,
 }
 
 impl Matrix3Builder2 {
+    #[allow(dead_code)]
     pub fn row(self, v1: f64, v2: f64, v3: f64) -> Matrix3 {
         let Matrix3 { values: mut v } = *self.current;
 
