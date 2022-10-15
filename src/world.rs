@@ -18,15 +18,19 @@ pub struct World<'a> {
     pub objects: Vec<&'a dyn WorldObject>,
 }
 
-pub struct PreparedComputations {
+pub struct PreparedComputations<'a> {
     point: Tuple,
+    over_point: Tuple,
     eye: Tuple,
     normal: Tuple,
+    object: &'a dyn WorldObject,
     #[allow(dead_code)]
     is_inside: bool,
 }
 
 impl World<'_> {
+    const EPSILON: f64 = 0.00001;
+
     #[allow(dead_code)]
     const DEFAULT_LIGHT: PointLight = PointLight {
         position: Tuple::point(-10.0, 10.0, -10.0),
@@ -77,13 +81,15 @@ impl World<'_> {
         Intersections { values: values }
     }
 
-    pub fn shade_hit(&self, material: &Material, comps: &PreparedComputations) -> Color {
+    pub fn shade_hit(&self, comps: &PreparedComputations) -> Color {
+        let is_in_shadow = self.is_shadowed(comps.over_point);
         lighting(
-            material,
+            &comps.object.material(),
             &self.light,
             &comps.point,
             &comps.eye,
             &comps.normal,
+            is_in_shadow
         )
     }
 
@@ -93,13 +99,24 @@ impl World<'_> {
         match intersections.hit() {
             Some(i) => {
                 let comps = World::prepare_computations(i, ray);
-                self.shade_hit(&i.object.material(), &comps)
+                self.shade_hit(&comps)
             }
             None => Color::BLACK,
         }
     }
 
-    fn prepare_computations(intersection: &Intersection, ray: &Ray) -> PreparedComputations {
+    fn is_shadowed(&self, point: Tuple) -> bool {
+        let v = self.light.position.subtract(&point);
+        let distance = v.magnitude();
+        let direction = v.normalize();
+        let r = Ray::new(point, direction);
+        let intersections = self.intersect(&r);
+        let h = intersections.hit();
+
+        h.map(|i| { distance - i.t > World::EPSILON }) == Some(true)
+    }
+
+    fn prepare_computations<'a>(intersection: &Intersection<'a>, ray: &Ray) -> PreparedComputations<'a> {
         let point = ray.position(intersection.t);
         let eye = ray.direction.negate();
         let mut normal = intersection.object.normal_at(&point);
@@ -110,11 +127,15 @@ impl World<'_> {
             is_inside = true;
         }
 
+        let over_point = point.add(&normal.scalar_mul(World::EPSILON));
+
         PreparedComputations {
             point,
+            over_point,
             eye,
             normal,
             is_inside,
+            object: intersection.object
         }
     }
 }
@@ -196,7 +217,7 @@ mod tests {
         matrix4::Matrix4,
         ray::{Intersection, Ray, Sphere},
         transform::{self, rotation_y, translation, view_transform},
-        tuple::Tuple,
+        tuple::Tuple, world::WorldObject,
     };
 
     use super::{Camera, World};
@@ -249,19 +270,30 @@ mod tests {
     }
 
     #[test]
+    fn hit_offset_point() {
+        let ray = Ray::new(Tuple::point(0.0, 0.0, -5.0), Tuple::vector(0.0, 0.0, 1.0));
+        let s = Sphere::DEFAULT.transform(&translation(0.0, 0.0, 1.0));
+        let i = Intersection { t: 5.0, object: &s };
+        let comps = World::prepare_computations(&i, &ray);
+        assert!(comps.over_point.z < -f64::EPSILON / 2.0);
+        assert!(comps.point.z > comps.over_point.z);
+    }
+
+    #[test]
     fn shade_intersection() {
         let world = World::default();
         let ray = Ray::new(Tuple::point(0.0, 0.0, -5.0), Tuple::vector(0.0, 0.0, 1.0));
-        let shape = *world.objects.first().unwrap();
+        let first: &dyn WorldObject = *world.objects.first().unwrap();
+
         let comps = World::prepare_computations(
             &Intersection {
-                object: &Sphere::DEFAULT,
+                object: first,
                 t: 4.0,
             },
             &ray,
         );
         assert_abs_diff_eq!(
-            world.shade_hit(&shape.material(), &comps),
+            world.shade_hit(&comps),
             Color::new(0.38066, 0.47583, 0.2855)
         );
     }
@@ -273,7 +305,6 @@ mod tests {
             intensity: Color::WHITE,
         });
         let ray = Ray::new(Tuple::point(0.0, 0.0, 0.0), Tuple::vector(0.0, 0.0, 1.0));
-        let shape = *world.objects.get(1).unwrap();
         let comps = World::prepare_computations(
             &Intersection {
                 object: &Sphere::DEFAULT,
@@ -282,9 +313,23 @@ mod tests {
             &ray,
         );
         assert_abs_diff_eq!(
-            world.shade_hit(&shape.material(), &comps),
+            world.shade_hit(&comps),
             Color::new(0.90498, 0.90498, 0.90498)
         );
+    }
+
+    #[test]
+    fn shade_intersection_shadow() {
+        let light = PointLight { position: Tuple::point(0.0, 0.0, -10.0), intensity: Color::WHITE };
+        let s1 = Sphere::DEFAULT;
+        let s2 = Sphere::DEFAULT.transform(&translation(0.0, 0.0, 10.0));
+        let r = Ray::new(Tuple::point(0.0, 0.0, 5.0), Tuple::vector(0.0, 0.0, 1.0));
+
+        let world = World::new(light, vec![&s1, &s2]);
+        let intersection = Intersection { t: 4.0, object: &s2 };
+        let comps = World::prepare_computations(&intersection, &r);
+
+        assert_abs_diff_eq!(world.shade_hit(&comps), Color::new(0.1, 0.1, 0.1));
     }
 
     #[test]
@@ -372,5 +417,14 @@ mod tests {
 
         let expected_color = Color::new(0.38066, 0.47583, 0.2855);
         assert_abs_diff_eq!(*image.pixel_at(5, 5).unwrap(), expected_color);
+    }
+
+    #[test]
+    fn is_shadowed() {
+        let world = World::default();
+        assert_eq!(world.is_shadowed(Tuple::point(0.0, 10.0, 0.0)), false); // nothing colinear
+        assert_eq!(world.is_shadowed(Tuple::point(10.0, -10.0, 10.0)), true); // object between point and light
+        assert_eq!(world.is_shadowed(Tuple::point(-20.0, 20.0, -20.0)), false); // object behind light
+        assert_eq!(world.is_shadowed(Tuple::point(-2.0, 2.0, -2.0)), false); // object behind point
     }
 }

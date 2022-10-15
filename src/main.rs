@@ -101,5 +101,5 @@ fn main() {
     let canvas = camera.render(&world);
 
     let ppm = canvas.generate_ppm();
-    fs::write("./examples/chapter-7.ppm", ppm).expect("Unable to output file");
+    fs::write("./examples/chapter-8.ppm", ppm).expect("Unable to output file");
 }

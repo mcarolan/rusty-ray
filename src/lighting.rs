@@ -86,11 +86,16 @@ pub fn lighting(
     position: &Tuple,
     eye_vector: &Tuple,
     normal_vector: &Tuple,
+    is_in_shadow: bool
 ) -> Color {
     let effective_color = material.color.mul(&light.intensity);
-    let light_vector = light.position.subtract(&position).normalize();
     let ambient = effective_color.scalar_mul(material.ambient);
 
+    if is_in_shadow {
+        return ambient;
+    }
+
+    let light_vector = light.position.subtract(&position).normalize();
     let light_dot_normal = light_vector.dot(&normal_vector);
 
     let mut diffuse = Color::new(0.0, 0.0, 0.0);
@@ -112,6 +117,7 @@ pub fn lighting(
                 .scalar_mul(factor);
         }
     }
+
     ambient.add(&diffuse).add(&specular)
 }
 
@@ -129,24 +135,39 @@ mod tests {
         let normal_vector = Tuple::vector(0.0, 0.0, -1.0);
         let light = PointLight {
             position: Tuple::point(0.0, 0.0, -10.0),
-            intensity: Color::new(1.0, 1.0, 1.0),
+            intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector),
+            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
             Color::new(1.9, 1.9, 1.9)
         );
     }
+
+    #[test]
+    fn lighting_eye_between_light_surface_shadow() {
+        let eye_vector = Tuple::vector(0.0, 0.0, -1.0);
+        let normal_vector = Tuple::vector(0.0, 0.0, -1.0);
+        let light = PointLight {
+            position: Tuple::point(0.0, 0.0, -10.0),
+            intensity: Color::WHITE,
+        };
+        assert_abs_diff_eq!(
+            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, true),
+            Color::new(0.1, 0.1, 0.1)
+        );
+    }
+
     #[test]
     fn lighting_eye_between_light_surface_eye_offset_45_deg() {
         let eye_vector = Tuple::vector(0.0, f64::sqrt(2.0) / 2.0, -f64::sqrt(2.0) / 2.0);
         let normal_vector = Tuple::vector(0.0, 0.0, -1.0);
         let light = PointLight {
             position: Tuple::point(0.0, 0.0, -10.0),
-            intensity: Color::new(1.0, 1.0, 1.0),
+            intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector),
-            Color::new(1.0, 1.0, 1.0)
+            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
+            Color::WHITE
         );
     }
 
@@ -156,10 +177,10 @@ mod tests {
         let normal_vector = Tuple::vector(0.0, 0.0, -1.0);
         let light = PointLight {
             position: Tuple::point(0.0, 10.0, -10.0),
-            intensity: Color::new(1.0, 1.0, 1.0),
+            intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector),
+            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
             Color::new(0.7364, 0.7364, 0.7364)
         );
     }
@@ -170,10 +191,10 @@ mod tests {
         let normal_vector = Tuple::vector(0.0, 0.0, -1.0);
         let light = PointLight {
             position: Tuple::point(0.0, 10.0, -10.0),
-            intensity: Color::new(1.0, 1.0, 1.0),
+            intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector),
+            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
             Color::new(1.6364, 1.6364, 1.6364)
         );
     }
@@ -184,10 +205,10 @@ mod tests {
         let normal_vector = Tuple::vector(0.0, 0.0, -1.0);
         let light = PointLight {
             position: Tuple::point(0.0, 0.0, 10.0),
-            intensity: Color::new(1.0, 1.0, 1.0),
+            intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector),
+            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
             Color::new(0.1, 0.1, 0.1)
         );
     }
