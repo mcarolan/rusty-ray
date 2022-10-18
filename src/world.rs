@@ -8,9 +8,19 @@ use crate::{
 };
 
 pub trait WorldObject {
-    fn normal_at(&self, world_point: &Tuple) -> Tuple;
-    fn intersect(&self, ray: &Ray) -> Intersections;
+    fn object_normal(&self, local_point: &Tuple) -> Tuple;
     fn material(&self) -> Material;
+    fn transform(&self) -> Matrix4;
+    fn object_intersect(&self, ray: &Ray) -> Intersections;
+}
+
+impl dyn WorldObject {
+    pub fn normal_at(object: &'_ dyn WorldObject, world_point: &Tuple) -> Tuple {
+        let object_point = object.transform().inverse().mul_tuple(&world_point);
+        let object_normal = object.object_normal(&object_point);
+        let world_normal = object.transform().inverse().transpose().mul_tuple(&object_normal);
+        Tuple::vector(world_normal.x, world_normal.y, world_normal.z).normalize()
+    }
 }
 
 pub struct World<'a> {
@@ -29,7 +39,7 @@ pub struct PreparedComputations<'a> {
 }
 
 impl World<'_> {
-    const EPSILON: f64 = 0.00001;
+    pub const EPSILON: f64 = 0.00001;
 
     #[allow(dead_code)]
     const DEFAULT_LIGHT: PointLight = PointLight {
@@ -73,7 +83,7 @@ impl World<'_> {
 
     pub fn intersect(&self, ray: &Ray) -> Intersections {
         let intersections = self.objects.iter().flat_map(|object| {
-            let intersections = object.intersect(ray);
+            let intersections = Intersections::intersect(*object, ray);
             intersections.values
         });
         let mut values = Vec::from_iter(intersections);
@@ -119,7 +129,7 @@ impl World<'_> {
     fn prepare_computations<'a>(intersection: &Intersection<'a>, ray: &Ray) -> PreparedComputations<'a> {
         let point = ray.position(intersection.t);
         let eye = ray.direction.negate();
-        let mut normal = intersection.object.normal_at(&point);
+        let mut normal = <dyn WorldObject>::normal_at(intersection.object, &point);
         let mut is_inside = false;
 
         if normal.dot(&eye) < 0.0 {
@@ -275,7 +285,7 @@ mod tests {
         let s = Sphere::DEFAULT.transform(&translation(0.0, 0.0, 1.0));
         let i = Intersection { t: 5.0, object: &s };
         let comps = World::prepare_computations(&i, &ray);
-        assert!(comps.over_point.z < -f64::EPSILON / 2.0);
+        assert!(comps.over_point.z < -World::EPSILON / 2.0);
         assert!(comps.point.z > comps.over_point.z);
     }
 
