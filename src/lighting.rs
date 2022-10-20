@@ -1,13 +1,14 @@
-use crate::{color::Color, tuple::Tuple};
+use crate::{color::Color, object::Object, pattern::Pattern, tuple::Tuple};
 
+#[derive(Copy, Clone)]
 pub struct PointLight {
     pub position: Tuple,
     pub intensity: Color,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone, Copy)]
 pub struct Material {
-    pub color: Color,
+    pub pattern: Pattern,
     pub ambient: f64,
     pub diffuse: f64,
     pub specular: f64,
@@ -15,81 +16,34 @@ pub struct Material {
 }
 
 impl Material {
+    pub const DEFAULT_AMBIENT: f64 = 0.1;
+    pub const DEFAULT_SPECULAR: f64 = 0.9;
+    pub const DEFAULT_DIFFUSE: f64 = 0.9;
+    pub const DEFAULT_SHININESS: f64 = 200.0;
+
     pub const DEFAULT: Material = Material {
-        color: Color {
-            red: 1.0,
-            green: 1.0,
-            blue: 1.0,
-        },
-        ambient: 0.1,
-        diffuse: 0.9,
-        specular: 0.9,
-        shininess: 200.0,
+        pattern: Pattern::WHITE,
+        ambient: Material::DEFAULT_AMBIENT,
+        diffuse: Material::DEFAULT_DIFFUSE,
+        specular: Material::DEFAULT_SPECULAR,
+        shininess: Material::DEFAULT_SHININESS,
     };
-
-    pub const fn color(&self, value: &Color) -> Material {
-        Material {
-            color: *value,
-            ambient: self.ambient,
-            diffuse: self.diffuse,
-            specular: self.specular,
-            shininess: self.shininess,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub const fn ambient(&self, value: f64) -> Material {
-        Material {
-            color: self.color,
-            ambient: value,
-            diffuse: self.diffuse,
-            specular: self.specular,
-            shininess: self.shininess,
-        }
-    }
-
-    pub const fn diffuse(&self, value: f64) -> Material {
-        Material {
-            color: self.color,
-            ambient: self.ambient,
-            diffuse: value,
-            specular: self.specular,
-            shininess: self.shininess,
-        }
-    }
-
-    pub const fn specular(&self, value: f64) -> Material {
-        Material {
-            color: self.color,
-            ambient: self.ambient,
-            diffuse: self.diffuse,
-            specular: value,
-            shininess: self.shininess,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub const fn shininess(&self, value: f64) -> Material {
-        Material {
-            color: self.color,
-            ambient: self.ambient,
-            diffuse: self.diffuse,
-            specular: self.specular,
-            shininess: value,
-        }
-    }
 }
 
 pub fn lighting(
-    material: &Material,
+    object: &Object,
     light: &PointLight,
     position: &Tuple,
     eye_vector: &Tuple,
     normal_vector: &Tuple,
-    is_in_shadow: bool
+    is_in_shadow: bool,
 ) -> Color {
-    let effective_color = material.color.mul(&light.intensity);
-    let ambient = effective_color.scalar_mul(material.ambient);
+    let effective_color = object
+        .material
+        .pattern
+        .color_at(object, &position)
+        .mul(&light.intensity);
+    let ambient = effective_color.scalar_mul(object.material.ambient);
 
     if is_in_shadow {
         return ambient;
@@ -103,17 +57,17 @@ pub fn lighting(
 
     if light_dot_normal >= 0.0 {
         diffuse = effective_color
-            .scalar_mul(material.diffuse)
+            .scalar_mul(object.material.diffuse)
             .scalar_mul(light_dot_normal);
 
         let reflect_vector = light_vector.negate().reflect(&normal_vector);
         let reflect_dot_eye = reflect_vector.dot(&eye_vector);
 
         if reflect_dot_eye > 0.0 {
-            let factor = f64::powf(reflect_dot_eye, material.shininess);
+            let factor = f64::powf(reflect_dot_eye, object.material.shininess);
             specular = light
                 .intensity
-                .scalar_mul(material.specular)
+                .scalar_mul(object.material.specular)
                 .scalar_mul(factor);
         }
     }
@@ -124,9 +78,14 @@ pub fn lighting(
 #[cfg(test)]
 mod tests {
     use super::{lighting, Material, PointLight};
-    use crate::{color::Color, tuple::Tuple};
+    use crate::{
+        color::Color,
+        matrix4::Matrix4,
+        object::{Object, ObjectType},
+        pattern::Pattern,
+        tuple::Tuple,
+    };
 
-    const MATERIAL: Material = Material::DEFAULT;
     const POINT: Tuple = Tuple::point(0.0, 0.0, 0.0);
 
     #[test]
@@ -138,7 +97,14 @@ mod tests {
             intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
+            lighting(
+                &Object::SPHERE,
+                &light,
+                &POINT,
+                &eye_vector,
+                &normal_vector,
+                false
+            ),
             Color::new(1.9, 1.9, 1.9)
         );
     }
@@ -152,7 +118,14 @@ mod tests {
             intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, true),
+            lighting(
+                &Object::SPHERE,
+                &light,
+                &POINT,
+                &eye_vector,
+                &normal_vector,
+                true
+            ),
             Color::new(0.1, 0.1, 0.1)
         );
     }
@@ -166,7 +139,14 @@ mod tests {
             intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
+            lighting(
+                &Object::SPHERE,
+                &light,
+                &POINT,
+                &eye_vector,
+                &normal_vector,
+                false
+            ),
             Color::WHITE
         );
     }
@@ -180,7 +160,14 @@ mod tests {
             intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
+            lighting(
+                &Object::SPHERE,
+                &light,
+                &POINT,
+                &eye_vector,
+                &normal_vector,
+                false
+            ),
             Color::new(0.7364, 0.7364, 0.7364)
         );
     }
@@ -194,7 +181,14 @@ mod tests {
             intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
+            lighting(
+                &Object::SPHERE,
+                &light,
+                &POINT,
+                &eye_vector,
+                &normal_vector,
+                false
+            ),
             Color::new(1.6364, 1.6364, 1.6364)
         );
     }
@@ -208,8 +202,62 @@ mod tests {
             intensity: Color::WHITE,
         };
         assert_abs_diff_eq!(
-            lighting(&MATERIAL, &light, &POINT, &eye_vector, &normal_vector, false),
+            lighting(
+                &Object::SPHERE,
+                &light,
+                &POINT,
+                &eye_vector,
+                &normal_vector,
+                false
+            ),
             Color::new(0.1, 0.1, 0.1)
         );
+    }
+
+    #[test]
+    fn lighting_pattern() {
+        let mat = Material {
+            pattern: Pattern::Stripe {
+                a: Color::WHITE,
+                b: Color::BLACK,
+                transform: Matrix4::IDENTITY,
+            },
+            ambient: 1.0,
+            diffuse: 0.0,
+            specular: 0.0,
+            shininess: Material::DEFAULT_SHININESS,
+        };
+
+        let s = Object {
+            object_type: ObjectType::Sphere,
+            material: mat,
+            transform: Matrix4::IDENTITY,
+        };
+        let light = PointLight {
+            position: Tuple::point(0.0, 0.0, -10.0),
+            intensity: Color::WHITE,
+        };
+
+        let eye = Tuple::vector(0.0, 0.0, -1.0);
+        let normal = Tuple::vector(0.0, 0.0, -1.0);
+        let c1 = lighting(
+            &s,
+            &light,
+            &Tuple::point(0.9, 0.0, 0.0),
+            &eye,
+            &normal,
+            false,
+        );
+        let c2 = lighting(
+            &s,
+            &light,
+            &Tuple::point(1.0, 0.0, 0.0),
+            &eye,
+            &normal,
+            false,
+        );
+
+        assert_abs_diff_eq!(c1, Color::WHITE);
+        assert_abs_diff_eq!(c2, Color::BLACK);
     }
 }
